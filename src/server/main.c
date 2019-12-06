@@ -1,35 +1,73 @@
 #include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h> // sockaadr_in pertence a esta libreria
+#include <stdlib.h>
 
 #define CRED_LENGTH 20
 #define NUM_USERS 2
+#define BUFFER_SIZE 100
+#define PORT_NUMBER 10000
 
 struct Auth{
     char usr[CRED_LENGTH];
     char psw[CRED_LENGTH];
 };
 
-int verificar(char *user, char *password);
+int autenticar(char *user, char *password);
 //int getTelemetria(char *ipaddr);
 //int getScan(int sockfd);
 //int sendUpdate(int sockfd);
 
 int main() {
 
-    int res_login;
-    res_login=verificar("david","d'andrea747");
+    int sockfd, pid;
+    char buffer[BUFFER_SIZE], buffer_aux[BUFFER_SIZE];
+    struct sockaddr_in st_serv, st_cli;
+
+
+    //Este bloque de codigo testea la funcion autenticar(char user, char pass)
+    /*int res_login;
+    res_login=autenticar("david","d'andrea747");
     if (res_login==1){
         printf("Login successful");
     }
     else{
         printf("Usr or Psw incorrect");
+    }*/
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    //aca maneja el erro si eventualemnte el soccket no se abre
+    if(sockfd <0){
+        perror("error al invocar 'socket' ");
+        exit(1);
     }
+
+    /* Limpieza de la estructura */
+    memset( &st_serv, 0, sizeof(st_serv ));
+    /* Carga de la familia de direccioens */
+    st_serv.sin_family=AF_INET;
+    /* Carga del número de puerto. Se usa 'htons para darle el orden correcto a los bytes' */
+    st_serv.sin_port=htons(PORT_NUMBER);
+    /* Carga de dirección IPv4 del socket, */
+    st_serv.sin_addr.s_addr= INADDR_ANY; //INADDR_ANY es una macro que contiene/obtiene la ip local del servidor
+
+
+
+
+
+
+
+
+
+
 
     return 0;
 }
 
 
-int verificar(char *user, char *password){
+int autenticar(char *user, char *password){
 
     struct Auth users[NUM_USERS]= {  {"admin", "admin"} , {"david","d'andrea747"}  };
     struct Auth check;
@@ -41,4 +79,4 @@ int verificar(char *user, char *password){
     }//end for
     return 0;
 
-}//end verificar
+}//end autenticar
