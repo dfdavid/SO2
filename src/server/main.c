@@ -3,11 +3,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h> // sockaadr_in pertence a esta libreria
 #include <stdlib.h>
+#include <unistd.h>
 
 #define CRED_LENGTH 20
 #define NUM_USERS 2
 #define BUFFER_SIZE 100
-#define PORT_NUMBER 10000
+#define PORT_NUMBER 5520
 
 struct Auth{
     char usr[CRED_LENGTH];
@@ -21,20 +22,11 @@ int autenticar(char *user, char *password);
 
 int main() {
 
-    int sockfd, pid;
+    int sockfd, newsockfd, pid;
+    socklen_t cli_length;
     char buffer[BUFFER_SIZE], buffer_aux[BUFFER_SIZE];
     struct sockaddr_in st_serv, st_cli;
 
-
-    //Este bloque de codigo testea la funcion autenticar(char user, char pass)
-    /*int res_login;
-    res_login=autenticar("david","d'andrea747");
-    if (res_login==1){
-        printf("Login successful");
-    }
-    else{
-        printf("Usr or Psw incorrect");
-    }*/
 
     //creacion del socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -53,6 +45,7 @@ int main() {
     st_serv.sin_port=htons(PORT_NUMBER);
     /* Carga de dirección IPv4 del socket, */
     st_serv.sin_addr.s_addr= INADDR_ANY; //INADDR_ANY es una macro que contiene/obtiene la ip local del servidor
+    //https://es.stackoverflow.com/questions/168128/duda-sobre-inaddr-any
 
 
     //hacer el bind
@@ -72,17 +65,63 @@ int main() {
         perror("listening error");
     }
 
+    //prompt
 
 
+    cli_length = sizeof(st_cli);
+    int finish = 0;
+    while (finish == 0){
+        printf("Esperando una conexion... \n");
 
+        //Upon successful completion, accept() returns the nonnegative file descriptor of the accepted socket. Otherwise, -1 is returned and errno is set to indicate the error.
+        newsockfd= accept(sockfd, (struct sockaddr *)&st_cli, &cli_length);
 
+        if (  newsockfd < 0 ){
+            perror("accept(): no se acepto la conexion");
+            exit(1);
+        }
+        printf("Conexion entrante... \n");
 
+        //Conceptos escenciales sobre el uso de la "syscall" fork()
 
+        // #1 http://man7.org/linux/man-pages/man2/fork.2.html
+        // #2 https://www.programacion.com.py/escritorio/c/creacion-y-duplicacion-de-procesos-en-c-linux
+        // #3 https://es.stackoverflow.com/questions/179414/como-funciona-la-funci%C3%B3n-fork
 
+        /*On success, the PID of the child process is returned in the parent,
+        and 0 is returned in the child.  On failure, -1 is returned in the
+        parent, no child process is created, and errno is set appropriately.*/
+        if ( (pid=fork()) < 0){
+            perror("fork(): error");
+            exit(1);
+        }
 
+        if (pid==0){ //proceso hijo
+            close(sockfd);
 
+            while(1){
+                memset(buffer, 0, BUFFER_SIZE);
 
+                int n=read(newsockfd, buffer, BUFFER_SIZE  );
 
+                if (n < 0){
+                    perror("buffer: error al leer");
+                    exit(1);
+                }
+
+                printf( "PROCESO %d \n", getpid() );
+                printf( "Recibí: %s \n", buffer );
+
+            }
+        }
+        else{//proceso padre
+            // https://linux.die.net/man/2/close
+            close(newsockfd);
+            printf("Se ha establecido una conexion \n");
+            continue;
+        }
+
+    }
 
 
     return 0;
