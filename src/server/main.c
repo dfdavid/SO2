@@ -102,15 +102,21 @@ int main() {
             while(1){
                 memset(buffer, 0, BUFFER_SIZE);
 
-                int n=read(newsockfd, buffer, BUFFER_SIZE  );
+//                int n=read(newsockfd, buffer, BUFFER_SIZE  );
+//
+//                if (n < 0){
+//                    perror("buffer: error al leer");
+//                    exit(1);
+//                }
 
-                if (n < 0){
-                    perror("buffer: error al leer");
-                    exit(1);
+                if( recv(newsockfd, buffer, sizeof(buffer), MSG_WAITALL) < 0 ){
+                    perror("error en recv()");
                 }
 
                 printf( "PROCESO %d \n", getpid() );
                 printf( "Recibí: %s \n", buffer );
+
+                sleep(2);
 
             }
         }
