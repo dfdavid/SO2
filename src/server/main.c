@@ -4,6 +4,7 @@
 #include <netinet/in.h> // sockaadr_in pertence a esta libreria
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #define CRED_LENGTH 20
 #define NUM_USERS 2
@@ -22,9 +23,10 @@ int autenticar(char *user, char *password);
 
 int main() {
 
-    int sockfd, newsockfd, pid;
+    int sockfd, newsockfd, pid, ret_recv;
     socklen_t cli_length;
     char buffer[BUFFER_SIZE], buffer_aux[BUFFER_SIZE];
+    memset(buffer, 0, sizeof(buffer));
     struct sockaddr_in st_serv, st_cli;
 
 
@@ -69,8 +71,8 @@ int main() {
 
 
     cli_length = sizeof(st_cli);
-    int finish = 0;
-    while (finish == 0){
+
+    while (1){
         printf("Esperando una conexion... \n");
 
         //Upon successful completion, accept() returns the nonnegative file descriptor of the accepted socket. Otherwise, -1 is returned and errno is set to indicate the error.
@@ -91,43 +93,51 @@ int main() {
         /*On success, the PID of the child process is returned in the parent,
         and 0 is returned in the child.  On failure, -1 is returned in the
         parent, no child process is created, and errno is set appropriately.*/
-        if ( (pid=fork()) < 0){
-            perror("fork(): error");
-            exit(1);
-        }
-
-        if (pid==0){ //proceso hijo
-            close(sockfd);
-
-            while(1){
-                memset(buffer, 0, BUFFER_SIZE);
-
-//                int n=read(newsockfd, buffer, BUFFER_SIZE  );
+//        if ( (pid=fork()) < 0){
+//            perror("fork(): error");
+//            exit(1);
+//        }
 //
-//                if (n < 0){
-//                    perror("buffer: error al leer");
-//                    exit(1);
-//                }
+//        if (pid==0){ //proceso hijo
+//            close(sockfd);
 
-                if( recv(newsockfd, buffer, sizeof(buffer), MSG_WAITALL) < 0 ){
-                    perror("error en recv()");
+            bool terminar=false;
+            while( terminar==false) {
+
+                ret_recv= recv(sockfd, buffer, sizeof(buffer), MSG_WAITALL);
+
+                if( ret_recv < 0){
+                    perror("error en recv()" );
+                    continue; //ojo aca, que hace en realidad del contnue?
                 }
 
-                printf( "PROCESO %d \n", getpid() );
-                printf( "Recibí: %s \n", buffer );
+                else{
 
-                sleep(2);
+                    printf( "PROCESO %d \n", getpid() );
+                    printf( "Recibí: %s \n", buffer );
+                    printf("bytes recibidos: %d  \n", ret_recv);
 
-            }
-        }
-        else{//proceso padre
-            // https://linux.die.net/man/2/close
-            close(newsockfd);
+                    if (send( newsockfd, buffer, sizeof(buffer), 0 ) < 0 ){
+                        perror("error al enviar desde el server");
+                        continue;
+                    }
+                }//end
+
+                if(strcmp(buffer, "fin") == 0  ){
+                    terminar=true;
+                }
+
+            }//end while
+        //}//end if "proceso hijo"
+
+//        else{//proceso padre
+//            // https://linux.die.net/man/2/close
+//            close(newsockfd);
             printf("Se ha establecido una conexion \n");
-            continue;
-        }
+//            continue;
+        }//end while "big server loop"
 
-    }
+
 
 
     return 0;
