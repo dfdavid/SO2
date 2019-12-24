@@ -8,7 +8,7 @@
 
 #define CRED_LENGTH 20
 #define NUM_USERS 2
-#define BUFFER_SIZE 100
+#define BUFFER_SIZE 1000
 #define PORT_NUMBER 5520
 
 struct Auth{
@@ -104,7 +104,7 @@ int main() {
             bool terminar=false;
             while( terminar==false) {
 
-                ret_recv= recv(sockfd, buffer, sizeof(buffer), MSG_WAITALL);
+                ret_recv= recv(newsockfd, buffer, sizeof(buffer), MSG_WAITALL);
 
                 if( ret_recv < 0){
                     perror("error en recv()" );
@@ -115,6 +115,7 @@ int main() {
 
                     printf( "PROCESO %d \n", getpid() );
                     printf( "Recibí: %s \n", buffer );
+                    //muestra el tamano del buffer en bytes. El buffer del servidor y cliente deberian ser iguales en tamano para evitar errores, por ejemplo, si el buff_cli es 1000 y el buff_srv es 100, el server se bloqueara para esperar una recepcion despues de leer el buffer 10 veces. Me paso (David)
                     printf("bytes recibidos: %d  \n", ret_recv);
 
                     if (send( newsockfd, buffer, sizeof(buffer), 0 ) < 0 ){
@@ -123,7 +124,7 @@ int main() {
                     }
                 }//end
 
-                if(strcmp(buffer, "fin") == 0  ){
+                if(strcmp(buffer, "fin\n") == 0  ){
                     terminar=true;
                 }
 
