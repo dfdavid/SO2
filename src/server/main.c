@@ -23,10 +23,11 @@ int autenticar(char *user, char *password);
 
 int main() {
 
+    struct Auth current_user;
     int sockfd, newsockfd, pid, ret_recv;
     socklen_t cli_length;
-    char buffer[BUFFER_SIZE], buffer_aux[BUFFER_SIZE];
-    memset(buffer, 0, sizeof(buffer));
+    char send_buffer[BUFFER_SIZE], recv_buffer[BUFFER_SIZE];
+    memset(send_buffer, 0, sizeof(send_buffer));
     struct sockaddr_in st_serv, st_cli;
 
 
@@ -50,13 +51,22 @@ int main() {
     //https://es.stackoverflow.com/questions/168128/duda-sobre-inaddr-any
 
 
+    //Antes del bind, se configuran las opciones del socket
+    const int valor=1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &valor, sizeof(valor)); // defino que la direccion del socket puede ser reutilizada por el SO
+    int socksize;
+    unsigned int m= sizeof(socksize);
+    getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (void *)&socksize, &m); // obtengo el tamaño del buffer del socket por default y lo guardo en socksize
+    printf("CONTROL: Tamaño del socket TCP %i\n", socksize);
+
+
     //hacer el bind
     //Upon successful completion, bind() returns 0. Otherwise, -1 is returned and errno is set to indicate the error.
     int bind_result;
     bind_result=  bind(sockfd, (struct sockaddr *)&st_serv, sizeof(st_serv) );
     if (bind_result < 0 ){
         perror("binding error");
-        exit(EXIT_FAILURE);
+        exit(2);
     }
 
 
@@ -67,13 +77,37 @@ int main() {
         perror("listening error");
     }
 
-    //prompt
+    //prompt 1
+    //autenticacion
+    bool auth = false;
+    memset(&current_user, (char)NULL, sizeof(current_user) );
+    while(auth == false) {
+        printf("Autenticacion necesaria \n");
+        printf("Usuario: ");
+        fgets(current_user.usr, sizeof(current_user.usr)-1, stdin);
+        current_user.usr[strlen(current_user.usr)-1]='\0';
 
+        printf("Password: ");
+        fgets(current_user.psw, sizeof(current_user.psw)-1, stdin);
+        current_user.psw[strlen(current_user.psw)-1]='\0';
+
+        //si al llamar a autenticar obtengo 0 informo el error y descuento un intento
+        if (autenticar(current_user.usr, current_user.psw) == 0) {
+            printf("Usuario o Password incorecto \n");
+        }
+
+            // si el llamado a autenticar devuelve 1, el login es exitoso y escapo del bucle
+        else {
+            auth = true;
+        }
+    }
+    printf("Login successfull...\n \n");
 
     cli_length = sizeof(st_cli);
 
+    //prompt 2 (already logged)
     while (1){
-        printf("Esperando una conexion... \n");
+        printf("%s\\> Esperando una conexion... \n", current_user.usr);
 
         //Upon successful completion, accept() returns the nonnegative file descriptor of the accepted socket. Otherwise, -1 is returned and errno is set to indicate the error.
         newsockfd= accept(sockfd, (struct sockaddr *)&st_cli, &cli_length);
@@ -82,61 +116,44 @@ int main() {
             perror("accept(): no se acepto la conexion");
             exit(1);
         }
-        printf("Conexion entrante... \n");
+        printf("%s\\> Conexion entrante... \n", current_user.usr);
 
-        //Conceptos escenciales sobre el uso de la "syscall" fork()
+        bool terminar=false;
+        while( terminar==false) {
 
-        // #1 http://man7.org/linux/man-pages/man2/fork.2.html
-        // #2 https://www.programacion.com.py/escritorio/c/creacion-y-duplicacion-de-procesos-en-c-linux
-        // #3 https://es.stackoverflow.com/questions/179414/como-funciona-la-funci%C3%B3n-fork
+            ret_recv= recv(newsockfd, send_buffer, sizeof(send_buffer), MSG_WAITALL);
 
-        /*On success, the PID of the child process is returned in the parent,
-        and 0 is returned in the child.  On failure, -1 is returned in the
-        parent, no child process is created, and errno is set appropriately.*/
-//        if ( (pid=fork()) < 0){
-//            perror("fork(): error");
-//            exit(1);
-//        }
-//
-//        if (pid==0){ //proceso hijo
-//            close(sockfd);
+            if( ret_recv < 0){
+                perror("error en recv()" );
+                continue; //ojo aca, que hace en realidad del contnue?
+            }
 
-            bool terminar=false;
-            while( terminar==false) {
+            else{
 
-                ret_recv= recv(newsockfd, buffer, sizeof(buffer), MSG_WAITALL);
+                printf( "PROCESO %d \n", getpid() );
+                printf( "Recibí: %s \n", send_buffer );
+                //muestra el tamano del send_buffer en bytes. El send_buffer del servidor y cliente deberian ser iguales en tamano para evitar errores, por ejemplo, si el buff_cli es 1000 y el buff_srv es 100, el server se bloqueara para esperar una recepcion despues de leer el send_buffer 10 veces. Me paso (David)
+                printf("bytes recibidos: %d  \n", ret_recv);
 
-                if( ret_recv < 0){
-                    perror("error en recv()" );
-                    continue; //ojo aca, que hace en realidad del contnue?
+                if (send( newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
+                    perror("error al enviar desde el server");
+                    continue;
                 }
+            }//end
 
-                else{
+            if(strcmp(send_buffer, "fin\n") == 0  ){
+                terminar=true;
+            }
 
-                    printf( "PROCESO %d \n", getpid() );
-                    printf( "Recibí: %s \n", buffer );
-                    //muestra el tamano del buffer en bytes. El buffer del servidor y cliente deberian ser iguales en tamano para evitar errores, por ejemplo, si el buff_cli es 1000 y el buff_srv es 100, el server se bloqueara para esperar una recepcion despues de leer el buffer 10 veces. Me paso (David)
-                    printf("bytes recibidos: %d  \n", ret_recv);
-
-                    if (send( newsockfd, buffer, sizeof(buffer), 0 ) < 0 ){
-                        perror("error al enviar desde el server");
-                        continue;
-                    }
-                }//end
-
-                if(strcmp(buffer, "fin\n") == 0  ){
-                    terminar=true;
-                }
-
-            }//end while
+        }//end while
         //}//end if "proceso hijo"
 
 //        else{//proceso padre
 //            // https://linux.die.net/man/2/close
 //            close(newsockfd);
-            printf("Se ha establecido una conexion \n");
+        printf("El cliente cerro la conexion con el comando 'fin'  \n");
 //            continue;
-        }//end while "big server loop"
+    }//end while "big server loop"
 
 
 
@@ -144,7 +161,7 @@ int main() {
     return 0;
 }
 
-
+//
 int autenticar(char *user, char *password){
 
     struct Auth users[NUM_USERS]= {  {"admin", "admin"} , {"david","d'andrea747"}  };
