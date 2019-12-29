@@ -10,6 +10,7 @@
 #define NUM_USERS 2
 #define BUFFER_SIZE 1000
 #define PORT_NUMBER 5520
+#define RETRY 3
 
 struct Auth{
     char usr[CRED_LENGTH];
@@ -78,8 +79,9 @@ int main() {
     }
 
     //prompt 1
-    //autenticacion
+    /*//autenticacion
     bool auth = false;
+    int intentos=RETRY;
     memset(&current_user, (char)NULL, sizeof(current_user) );
     while(auth == false) {
         printf("Autenticacion necesaria \n");
@@ -93,14 +95,19 @@ int main() {
 
         //si al llamar a autenticar obtengo 0 informo el error y descuento un intento
         if (autenticar(current_user.usr, current_user.psw) == 0) {
-            printf("Usuario o Password incorecto \n");
+            intentos--;
+            if(intentos==0){
+                printf("Limite de intentos fallidos alncanzado \n");
+                exit(3);
+            }
+            printf("Usuario o Password incorecto, queda/n %i intento/s \n", intentos);
         }
 
             // si el llamado a autenticar devuelve 1, el login es exitoso y escapo del bucle
         else {
             auth = true;
         }
-    }
+    }//fin de la autenticacion*/
     printf("Login successfull...\n \n");
 
     cli_length = sizeof(st_cli);
@@ -116,13 +123,29 @@ int main() {
             perror("accept(): no se acepto la conexion");
             exit(1);
         }
-        printf("%s\\> Conexion entrante... \n", current_user.usr);
+        printf("%s\\> Conexion entrante... \n\n\n", current_user.usr);
+        sleep(1);
 
         bool terminar=false;
         while( terminar==false) {
 
-            ret_recv= recv(newsockfd, send_buffer, sizeof(send_buffer), MSG_WAITALL);
+            bool opt_valid= false;
+            int opt=0;
+            while(opt_valid != true){ //menu de operaciones
+                printf("    Seleccione una opcion: \n");
+                printf("1 - Update Satellite Firmware \n");
+                printf("2 - Start Scanning \n");
+                printf("3 - Get Telemetry \n\n");
+                printf("Opcion  " );
+                scanf("%d", &opt);
+                //fgets(opt, strlen(opt), stdin);
+                if ( opt==1 | opt==2 | opt==3 ){
+                    opt_valid=true;
+                }
+            }
+            printf("Ha elegido %d \n", opt);
 
+            ret_recv= recv(newsockfd, send_buffer, sizeof(send_buffer), MSG_WAITALL);
             if( ret_recv < 0){
                 perror("error en recv()" );
                 continue; //ojo aca, que hace en realidad del contnue?
@@ -164,7 +187,7 @@ int main() {
 //
 int autenticar(char *user, char *password){
 
-    struct Auth users[NUM_USERS]= {  {"admin", "admin"} , {"david","d'andrea747"}  };
+    struct Auth users[NUM_USERS]= {  {"admin", "admin"} , {"david","dandrea747"}  };
     struct Auth check;
 
     strcpy(check.usr, user);
