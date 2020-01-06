@@ -2,6 +2,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h> // sockaadr_in pertence a esta libreria
+#include <arpa/inet.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
@@ -10,6 +11,7 @@
 #define NUM_USERS 2
 #define BUFFER_SIZE 1000
 #define PORT_NUMBER 5520
+#define UDP_PORT 5521
 #define RETRY 3
 
 struct Auth{
@@ -18,7 +20,7 @@ struct Auth{
 };
 
 int autenticar(char *user, char *password);
-//int getTelemetria(char *ipaddr);
+int getTelemetria(char *ipaddr);
 //int getScan(int sockfd);
 //int sendUpdate(int sockfd);
 
@@ -132,12 +134,13 @@ int main() {
             bool opt_valid= false;
             int opt=0;
             while(opt_valid != true){ //menu de operaciones
+                printf("\n");
                 printf("    Seleccione una opcion: \n");
                 printf("1 - Update Satellite Firmware \n");
                 printf("2 - Start Scanning \n");
                 printf("3 - Get Telemetry \n\n");
                 printf("Opcion  " );
-                scanf("%d", &opt);
+                scanf("%d", &opt);  //scanf ( tipo_de_dato_a_leer, puntero al dato)
                 //fgets(opt, strlen(opt), stdin);
                 if ( opt==1 | opt==2 | opt==3 ){
                     opt_valid=true;
@@ -145,24 +148,65 @@ int main() {
             }
             printf("Ha elegido %d \n", opt);
 
-            ret_recv= recv(newsockfd, send_buffer, sizeof(send_buffer), MSG_WAITALL);
-            if( ret_recv < 0){
-                perror("error en recv()" );
-                continue; //ojo aca, que hace en realidad del contnue?
+            //switch por opciones
+            switch(opt){
+                case 1:
+                    //printf("todavia no se implemento esta funcionalidad\n");
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    printf("sending satellite firmware version...  \n");
+                    strcpy(send_buffer, "1");
+                    if ( send(newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
+                        perror("error al enviar solicitud de firmaware update");
+                    }
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    break;
+
+                case 2:
+                    //printf("todavia no se implemento esta funcionalidad\n");
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    strcpy(send_buffer, "2");
+                    printf("sending scannig request... \n");
+                    if ( send(newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
+                        perror("error al enviar solicitud de Start scaning");
+                    }
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    break;
+
+                case 3:
+                    //get telemetria
+                    printf("getting telemetry \n");
+                    strcpy(send_buffer, "3");
+                    if ( send(newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
+                        perror("error al enviar solicitud de get telemetry");
+                    }
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    getTelemetria(inet_ntoa( st_cli.sin_addr ));
+                    printf("%s \n", inet_ntoa( st_cli.sin_addr )); // se le pasa ip en formato ascii la ip del cliente
+                    break;
+
+                default:
+                    break;
             }
 
-            else{
+            //codigo viejo. Anda pero hay que usarlo para algo o sacarlo a la mier
+            /*
+                if( recv(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0){
+                    perror("error en recv()" );
+                    continue; //ojo aca, que hace en realidad el contnue?
+                } //end if
 
-                printf( "PROCESO %d \n", getpid() );
-                printf( "Recibí: %s \n", send_buffer );
-                //muestra el tamano del send_buffer en bytes. El send_buffer del servidor y cliente deberian ser iguales en tamano para evitar errores, por ejemplo, si el buff_cli es 1000 y el buff_srv es 100, el server se bloqueara para esperar una recepcion despues de leer el send_buffer 10 veces. Me paso (David)
-                printf("bytes recibidos: %d  \n", ret_recv);
+                else{
 
-                if (send( newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
-                    perror("error al enviar desde el server");
-                    continue;
-                }
-            }//end
+                    printf( "PROCESO %d \n", getpid() );
+                    printf( "Recibí: %s \n", send_buffer );
+                    //muestra el tamano del send_buffer en bytes. El send_buffer del servidor y cliente deberian ser iguales en tamano para evitar errores, por ejemplo, si el buff_cli es 1000 y el buff_srv es 100, el server se bloqueara para esperar una recepcion despues de leer el send_buffer 10 veces. Me paso (David)
+                    printf("bytes recibidos: %d  \n", ret_recv);
+
+                    if (send( newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
+                        perror("error al enviar desde el server");
+                        continue;
+                    }
+                }//end else*/
 
             if(strcmp(send_buffer, "fin\n") == 0  ){
                 terminar=true;
@@ -198,3 +242,73 @@ int autenticar(char *user, char *password){
     return 0;
 
 }//end autenticar
+
+int getTelemetria(char *ipaddr){
+    printf("ud invoco la funcion get telemetria \n");
+
+    int sockudp;
+    struct sockaddr_in dest_addr;
+    socklen_t dest_size= sizeof(dest_addr);
+    socklen_t *dest_addr_size_p=&dest_size;
+    char bufferudp[BUFFER_SIZE], bufferudp2[BUFFER_SIZE];
+    //char *word = null;
+
+
+    //creacion del socket UDP
+    sockudp= socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockudp < 0){
+        perror("error creando socket UDP");
+        exit(-2);
+    }
+
+    //limpieza y llendo de la estructura
+    /* Limpieza de la estructura */
+    memset(&dest_addr, 0, sizeof(dest_addr));
+    /* Carga de la familia de direccioens */
+    dest_addr.sin_family=AF_INET;
+    /* Carga del número de puerto. Se usa 'htons para darle el orden correcto a los bytes' */
+    dest_addr.sin_port=htons(UDP_PORT);
+    //Carga de dirección IPv4 del socket
+    /*
+     composicion de la estructura sockadd_in:
+
+     struct sockaddr_in {
+            short int sin_family;
+            unsigned short int sin_port;
+            struct in_addr sin_addr;
+    };
+
+    //para mas detalles sobre inet_aton consultar:
+    //https://linux.die.net/man/3/inet_aton
+    //int inet_aton(const char *cp, struct in_addr *inp);
+    */
+    inet_aton(ipaddr, &dest_addr.sin_addr);
+    printf("se cargo en la estructura la direccion:\n");
+    printf("%s\n", inet_ntoa(dest_addr.sin_addr));
+
+    //se configuran las opciones del socket con setsocketopt(). Solo se hace bind del lado del srevidor. El servidor UDP es el satelite
+    int socksize;
+    unsigned int m= sizeof(socksize);
+    //int setsockopt(int socket, int level, int option_name, const void *option_value, socklen_t option_len);
+    setsockopt(sockudp, SOL_SOCKET, SO_REUSEADDR, &m, sizeof(m)); // defino que la direccion del socket puede ser reutilizada por el SO
+
+    memset(bufferudp, 0, sizeof(bufferudp));
+    strcpy(bufferudp, "get_tel");
+    sendto(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    //ssize_t sendto(int socket, const void *message, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len);
+
+    while( strcmp(bufferudp, "udp_complete") != 0 ){
+        recvfrom(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, (socklen_t *)dest_addr_size_p );
+        //ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len);
+        char telemetria[BUFFER_SIZE]="";
+        char *token=&telemetria[0];
+        /*while(token!=NULL){
+            token = strtok(bufferudp, "|");
+            strcat(telemetria, token);
+        }*/
+        strcpy(telemetria, bufferudp);
+        printf("Telemetria: %s\n", telemetria);
+
+
+    }
+}
