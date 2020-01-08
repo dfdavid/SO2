@@ -181,7 +181,7 @@ int main() {
                     }
                     memset(send_buffer, 0, sizeof(send_buffer));
                     getTelemetria(inet_ntoa( st_cli.sin_addr ));
-                    printf("%s \n", inet_ntoa( st_cli.sin_addr )); // se le pasa ip en formato ascii la ip del cliente
+                    //printf("%s \n", inet_ntoa( st_cli.sin_addr )); // se le pasa ip en formato ascii la ip del cliente
                     break;
 
                 default:
@@ -294,10 +294,12 @@ int getTelemetria(char *ipaddr){
 
     memset(bufferudp, 0, sizeof(bufferudp));
     strcpy(bufferudp, "get_tel");
+    sleep(2);
     sendto(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
     //ssize_t sendto(int socket, const void *message, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len);
 
     while( strcmp(bufferudp, "udp_complete") != 0 ){
+        memset(bufferudp, 0, sizeof(bufferudp));
         recvfrom(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, (socklen_t *)dest_addr_size_p );
         //ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len);
         char telemetria[BUFFER_SIZE]="";
@@ -309,6 +311,7 @@ int getTelemetria(char *ipaddr){
         strcpy(telemetria, bufferudp);
         printf("Telemetria: %s\n", telemetria);
 
-
     }
+    shutdown(sockudp, SHUT_WR);  //originalmente torce le puso 2 y no la macro
+    close(sockudp);
 }
