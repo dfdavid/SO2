@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #define CRED_LENGTH 20
 #define NUM_USERS 2
@@ -13,6 +15,9 @@
 #define PORT_NUMBER 5520
 #define UDP_PORT 5521
 #define RETRY 3
+#define FIRMWARE_FILE "../firmware_cliente"
+#define FILE_BUFFER_SIZE 16000
+
 
 struct Auth{
     char usr[CRED_LENGTH];
@@ -22,7 +27,7 @@ struct Auth{
 int autenticar(char *user, char *password);
 int getTelemetria(char *ipaddr);
 //int getScan(int sockfd);
-//int sendUpdate(int sockfd);
+int sendUpdate(int sockfd);
 
 int main() {
 
@@ -81,7 +86,8 @@ int main() {
     }
 
     //prompt 1
-    /*//autenticacion
+    //autenticacion
+    /*
     bool auth = false;
     int intentos=RETRY;
     memset(&current_user, (char)NULL, sizeof(current_user) );
@@ -159,6 +165,8 @@ int main() {
                         perror("error al enviar solicitud de firmaware update");
                     }
                     memset(send_buffer, 0, sizeof(send_buffer));
+                    sendUpdate(newsockfd);
+
                     break;
 
                 case 2:
@@ -314,4 +322,23 @@ int getTelemetria(char *ipaddr){
     }
     shutdown(sockudp, SHUT_WR);  //originalmente torce le puso 2 y no la macro
     close(sockudp);
+}
+
+int sendUpdate(int sockfd_arg){
+    //replicate example function
+    int firmware_fd;
+    struct stat wtf;
+
+    //intento abrir el archivo de firmaware en este caso:
+    if ( ( firmware_fd = open(FIRMWARE_FILE, O_RDONLY) ) < 0 ){
+        perror("error al abrir el archivo de firmware");
+        return -1;
+    }
+
+    int count;
+    char buffer_envio[FILE_BUFFER_SIZE];
+
+    fstat(firmware_fd, &wtf);
+
+
 }
