@@ -15,7 +15,7 @@
 #define PORT_NUMBER 5520
 #define UDP_PORT 5521
 #define RETRY 3
-#define FIRMWARE_FILE "./firmware_cliente"
+#define FIRMWARE_FILE "./client_firmaware_1-1"
 #define FILE_BUFFER_SIZE 2000
 
 
