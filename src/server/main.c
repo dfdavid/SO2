@@ -15,8 +15,8 @@
 #define PORT_NUMBER 5520
 #define UDP_PORT 5521
 #define RETRY 3
-#define FIRMWARE_FILE "../firmware_cliente"
-#define FILE_BUFFER_SIZE 16000
+#define FIRMWARE_FILE "./firmware_cliente"
+#define FILE_BUFFER_SIZE 2000
 
 
 struct Auth{
@@ -308,7 +308,7 @@ int getTelemetria(char *ipaddr){
 
     while( strcmp(bufferudp, "udp_complete") != 0 ){
         memset(bufferudp, 0, sizeof(bufferudp));
-        recvfrom(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, (socklen_t *)dest_addr_size_p );
+        recvfrom(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, dest_addr_size_p );
         //ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len);
         char telemetria[BUFFER_SIZE]="";
         char *token=&telemetria[0];
@@ -328,17 +328,40 @@ int sendUpdate(int sockfd_arg){
     //replicate example function
     int firmware_fd;
     struct stat wtf;
+    char *filename=FIRMWARE_FILE;
 
     //intento abrir el archivo de firmaware en este caso:
-    if ( ( firmware_fd = open(FIRMWARE_FILE, O_RDONLY) ) < 0 ){
+    if ( ( firmware_fd = open(filename, O_RDONLY) ) < 0 ){
         perror("error al abrir el archivo de firmware");
-        return -1;
+        return -1; //
     }
 
     int count;
     char buffer_envio[FILE_BUFFER_SIZE];
 
     fstat(firmware_fd, &wtf);
+    off_t filesize = wtf.st_size;
+    printf("DEBUG: tamaño del archivo a tranmitir: %ld\n", filesize);
+    uint32_t bytes = htonl(filesize);
 
+    char *s_bytes = (char *)&bytes;
+    printf("DEBUG: n° de bytes a enviar: %i\n", ntohl(bytes));
+
+    //intento enviar de a bytes lo que esta apuntando s_bytes, como esta compuesto s_bytes ya tiene que ver con el manejo de archivos en libc
+    if ( send(sockfd_arg, s_bytes, sizeof(bytes), 0) < 0 ){
+        perror("error al enviar al archivo");
+    }
+
+    //voy leyendo el archivo de a partes del tamano del buffer de envio y voy enviando
+    while ( ( count=(int) read(firmware_fd, buffer_envio, FILE_BUFFER_SIZE) ) > 0 ){
+        //ssize_t send(int socket, const void *buffer, size_t length, int flags);
+        // voy enviando al socket el buffer de envio que es lo que lei recien
+        if (send( sockfd_arg, buffer_envio, count, 0 ) < 0 ){
+            perror("error enviando el archivo, (dentro del while)");
+        }
+        memset(buffer_envio, 0, BUFFER_SIZE);
+    }
+    close(firmware_fd); //cierro el archivo
+    return 1; //return int 1: recepcion exitosa
 
 }
