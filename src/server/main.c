@@ -8,6 +8,8 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <sys/time.h>
 
 #define CRED_LENGTH 20
 #define NUM_USERS 2
@@ -16,7 +18,9 @@
 #define UDP_PORT 5521
 #define RETRY 3
 #define FIRMWARE_FILE "./client_firmaware_1-1"
+#define IMAGE_FILE "./archivo_imagen"
 #define FILE_BUFFER_SIZE 2000
+
 
 
 struct Auth{
@@ -26,7 +30,7 @@ struct Auth{
 
 int autenticar(char *user, char *password);
 int getTelemetria(char *ipaddr);
-//int getScan(int sockfd);
+int getScan(int sockfd);
 int sendUpdate(int sockfd);
 
 int main() {
@@ -43,36 +47,38 @@ int main() {
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     //aca maneja el error si eventualmente el socket no se abre
-    if(sockfd <0){
+    if (sockfd < 0) {
         perror("error al invocar 'socket' ");
         exit(1);
     }
 
     /* Limpieza de la estructura */
-    memset( &st_serv, 0, sizeof(st_serv ));
+    memset(&st_serv, 0, sizeof(st_serv));
     /* Carga de la familia de direccioens */
-    st_serv.sin_family=AF_INET;
+    st_serv.sin_family = AF_INET;
     /* Carga del número de puerto. Se usa 'htons para darle el orden correcto a los bytes' */
-    st_serv.sin_port=htons(PORT_NUMBER);
+    st_serv.sin_port = htons(PORT_NUMBER);
     /* Carga de dirección IPv4 del socket, */
-    st_serv.sin_addr.s_addr= INADDR_ANY; //INADDR_ANY es una macro que contiene/obtiene la ip local del servidor
+    st_serv.sin_addr.s_addr = INADDR_ANY; //INADDR_ANY es una macro que contiene/obtiene la ip local del servidor
     //https://es.stackoverflow.com/questions/168128/duda-sobre-inaddr-any
 
 
     //Antes del bind, se configuran las opciones del socket
-    const int valor=1;
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &valor, sizeof(valor)); // defino que la direccion del socket puede ser reutilizada por el SO
+    const int valor = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &valor,
+               sizeof(valor)); // defino que la direccion del socket puede ser reutilizada por el SO
     int socksize;
-    unsigned int m= sizeof(socksize);
-    getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (void *)&socksize, &m); // obtengo el tamaño del buffer del socket por default y lo guardo en socksize
+    unsigned int m = sizeof(socksize);
+    getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (void *) &socksize,
+               &m); // obtengo el tamaño del buffer del socket por default y lo guardo en socksize
     printf("CONTROL: Tamaño del socket TCP %i\n", socksize);
 
 
     //hacer el bind
     //Upon successful completion, bind() returns 0. Otherwise, -1 is returned and errno is set to indicate the error.
     int bind_result;
-    bind_result=  bind(sockfd, (struct sockaddr *)&st_serv, sizeof(st_serv) );
-    if (bind_result < 0 ){
+    bind_result = bind(sockfd, (struct sockaddr *) &st_serv, sizeof(st_serv));
+    if (bind_result < 0) {
         perror("binding error");
         exit(2);
     }
@@ -80,8 +86,8 @@ int main() {
 
     //invocar a listen(int sockfd, int maxConections) Esta funcion Convierte al Socket en un socket servidor
     //Upon successful completions, listen() returns 0. Otherwise, -1 is returned and errno is set to indicate the error.
-    int listening=listen(sockfd, 3);
-    if( listening < 0){
+    int listening = listen(sockfd, 3);
+    if (listening < 0) {
         perror("listening error");
     }
 
@@ -121,120 +127,127 @@ int main() {
     cli_length = sizeof(st_cli);
 
     //prompt 2 (already logged)
-    while (1){
+    while (1) {
         printf("%s\\> Esperando una conexion... \n", current_user.usr);
 
         //Upon successful completion, accept() returns the nonnegative file descriptor of the accepted socket. Otherwise, -1 is returned and errno is set to indicate the error.
-        newsockfd= accept(sockfd, (struct sockaddr *)&st_cli, &cli_length);
+        newsockfd = accept(sockfd, (struct sockaddr *) &st_cli, &cli_length);
 
-        if (  newsockfd < 0 ){
+        if (newsockfd < 0) {
             perror("accept(): no se acepto la conexion");
             exit(1);
         }
+
         printf("%s\\> Conexion entrante... \n\n\n", current_user.usr);
         sleep(1);
 
-        bool terminar=false;
-        while( terminar==false) {
+        pid = fork();
+        if (pid < 0) {
+            perror("error al hacer fork");
+        }
+        else if (pid == 0) { //hijo
 
-            bool opt_valid= false;
-            int opt=0;
-            while(opt_valid != true){ //menu de operaciones
-                printf("\n");
-                printf("    Seleccione una opcion: \n");
-                printf("1 - Update Satellite Firmware \n");
-                printf("2 - Start Scanning \n");
-                printf("3 - Get Telemetry \n\n");
-                printf("Opcion  " );
-                scanf("%d", &opt);  //scanf ( tipo_de_dato_a_leer, puntero al dato)
-                //fgets(opt, strlen(opt), stdin);
-                if ( opt==1 | opt==2 | opt==3 ){
-                    opt_valid=true;
+            bool terminar = false;
+            while (terminar == false) {
+
+                bool opt_valid = false;
+                int opt = 0;
+                while (opt_valid != true) { //menu de operaciones
+                    printf("\n");
+                    printf("    Seleccione una opcion: \n");
+                    printf("1 - Update Satellite Firmware \n");
+                    printf("2 - Start Scanning \n");
+                    printf("3 - Get Telemetry \n\n");
+                    printf("Opcion  ");
+                    scanf("%d", &opt);  //scanf ( tipo_de_dato_a_leer, puntero al dato)
+                    //fgets(opt, strlen(opt), stdin);
+                    if (opt == 1 | opt == 2 | opt == 3) {
+                        opt_valid = true;
+                    }
                 }
-            }
-            printf("Ha elegido %d \n", opt);
+                printf("Ha elegido %d \n", opt);
 
-            //switch por opciones
-            switch(opt){
-                case 1:
-                    //printf("todavia no se implemento esta funcionalidad\n");
-                    memset(send_buffer, 0, sizeof(send_buffer));
-                    printf("sending satellite firmware version...  \n");
-                    strcpy(send_buffer, "1");
-                    if ( send(newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
-                        perror("error al enviar solicitud de firmaware update");
-                    }
-                    memset(send_buffer, 0, sizeof(send_buffer));
-                    sendUpdate(newsockfd);
+                //switch por opciones
+                switch (opt) {
+                    case 1:
+                        //printf("todavia no se implemento esta funcionalidad\n");
+                        memset(send_buffer, 0, sizeof(send_buffer));
+                        printf("sending satellite firmware version...  \n");
+                        strcpy(send_buffer, "1");
+                        if (send(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0) {
+                            perror("error al enviar solicitud de firmaware update");
+                        }
+                        memset(send_buffer, 0, sizeof(send_buffer));
+                        sendUpdate(newsockfd);
+                        kill(getpid(), SIGINT);
 
-                    break;
+                        break;
 
-                case 2:
-                    //printf("todavia no se implemento esta funcionalidad\n");
-                    memset(send_buffer, 0, sizeof(send_buffer));
-                    strcpy(send_buffer, "2");
-                    printf("sending scannig request... \n");
-                    if ( send(newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
-                        perror("error al enviar solicitud de Start scaning");
-                    }
-                    memset(send_buffer, 0, sizeof(send_buffer));
-                    break;
+                    case 2:
+                        //printf("todavia no se implemento esta funcionalidad\n");
+                        memset(send_buffer, 0, sizeof(send_buffer));
+                        strcpy(send_buffer, "2");
+                        printf("sending scannig request... \n");
+                        if (send(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0) {
+                            perror("error al enviar solicitud de Start scaning");
+                        }
+                        memset(send_buffer, 0, sizeof(send_buffer));
+                        getScan(newsockfd);
+                        break;
 
-                case 3:
-                    //get telemetria
-                    printf("getting telemetry \n");
-                    strcpy(send_buffer, "3");
-                    if ( send(newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
-                        perror("error al enviar solicitud de get telemetry");
-                    }
-                    memset(send_buffer, 0, sizeof(send_buffer));
-                    getTelemetria(inet_ntoa( st_cli.sin_addr ));
-                    //printf("%s \n", inet_ntoa( st_cli.sin_addr )); // se le pasa ip en formato ascii la ip del cliente
-                    break;
+                    case 3:
+                        //get telemetria
+                        printf("getting telemetry \n");
+                        strcpy(send_buffer, "3");
+                        if (send(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0) {
+                            perror("error al enviar solicitud de get telemetry");
+                        }
+                        memset(send_buffer, 0, sizeof(send_buffer));
+                        getTelemetria(inet_ntoa(st_cli.sin_addr));
+                        //printf("%s \n", inet_ntoa( st_cli.sin_addr )); // se le pasa ip en formato ascii la ip del cliente
+                        break;
 
-                default:
-                    break;
-            }
+                    default:
+                        break;
+                }
 
-            //codigo viejo. Anda pero hay que usarlo para algo o sacarlo a la mier
-            /*
-                if( recv(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0){
-                    perror("error en recv()" );
-                    continue; //ojo aca, que hace en realidad el contnue?
-                } //end if
+                //codigo viejo. Anda pero hay que usarlo para algo o sacarlo a la mier
+                /*
+                    if( recv(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0){
+                        perror("error en recv()" );
+                        continue; //ojo aca, que hace en realidad el contnue?
+                    } //end if
 
-                else{
+                    else{
 
-                    printf( "PROCESO %d \n", getpid() );
-                    printf( "Recibí: %s \n", send_buffer );
-                    //muestra el tamano del send_buffer en bytes. El send_buffer del servidor y cliente deberian ser iguales en tamano para evitar errores, por ejemplo, si el buff_cli es 1000 y el buff_srv es 100, el server se bloqueara para esperar una recepcion despues de leer el send_buffer 10 veces. Me paso (David)
-                    printf("bytes recibidos: %d  \n", ret_recv);
+                        printf( "PROCESO %d \n", getpid() );
+                        printf( "Recibí: %s \n", send_buffer );
+                        //muestra el tamano del send_buffer en bytes. El send_buffer del servidor y cliente deberian ser iguales en tamano para evitar errores, por ejemplo, si el buff_cli es 1000 y el buff_srv es 100, el server se bloqueara para esperar una recepcion despues de leer el send_buffer 10 veces. Me paso (David)
+                        printf("bytes recibidos: %d  \n", ret_recv);
 
-                    if (send( newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
-                        perror("error al enviar desde el server");
-                        continue;
-                    }
-                }//end else*/
+                        if (send( newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
+                            perror("error al enviar desde el server");
+                            continue;
+                        }
+                    }//end else*/
 
-            if(strcmp(send_buffer, "fin\n") == 0  ){
-                terminar=true;
-            }
+                if (strcmp(send_buffer, "fin\n") == 0) {
+                    terminar = true;
+                }
 
-        }//end while
-        //}//end if "proceso hijo"
+            }//end while
+        }//end if "proceso hijo"
 
-//        else{//proceso padre
-//            // https://linux.die.net/man/2/close
-//            close(newsockfd);
-        printf("El cliente cerro la conexion con el comando 'fin'  \n");
-//            continue;
+        else {//proceso padre
+            // https://linux.die.net/man/2/close
+            close(newsockfd);
+            //printf("El cliente cerro la conexion con el comando 'fin'  \n");
+            continue;
+        }
     }//end while "big server loop"
+    //return 0; //el programa del servidor no termina
+}// end main
 
-
-
-
-    return 0;
-}
 
 //
 int autenticar(char *user, char *password){
@@ -251,6 +264,7 @@ int autenticar(char *user, char *password){
 
 }//end autenticar
 
+//funcion 3
 int getTelemetria(char *ipaddr){
     printf("ud invoco la funcion get telemetria \n");
 
@@ -324,6 +338,7 @@ int getTelemetria(char *ipaddr){
     close(sockudp);
 }
 
+//funcion 1
 int sendUpdate(int sockfd_arg){
     //replicate example function
     int firmware_fd;
@@ -363,5 +378,51 @@ int sendUpdate(int sockfd_arg){
     }
     close(firmware_fd); //cierro el archivo
     return 1; //return int 1: recepcion exitosa
+}
+
+//funcion2
+int getScan(int sockfd_arg2){
+    struct timeval inicio, fin;
+    char *nombre_archivo=IMAGE_FILE;
+
+    int imagen_fd;
+    // int open(const char *path, int oflag/s, file_permissions );
+    if ( ( imagen_fd=open(nombre_archivo, O_WRONLY|O_CREAT|O_TRUNC, 0666 ) ) < 0  ){
+        perror("error al crear el archivo de la imagen a recibir\n");
+        return 0;
+    }
+
+    char buffer_recepcion2[BUFFER_SIZE];
+    long byte_leido=0;
+    gettimeofday(&inicio, NULL);
+    uint32_t bytes_recibidos;
+    if (( byte_leido= recv(sockfd_arg2, &bytes_recibidos, 4, 0) ) != 0 ){
+        if ( byte_leido < 0  ){
+            perror("error al leer del sock_arg2");
+        }
+    }
+
+    bytes_recibidos=ntohl(bytes_recibidos);
+    printf("N° de bytes a recibir: %d\n", bytes_recibidos);
+    while (bytes_recibidos) {
+        memset(buffer_recepcion2, 0, FILE_BUFFER_SIZE);
+        if( (byte_leido=recv(sockfd_arg2, buffer_recepcion2, FILE_BUFFER_SIZE, 0)) != 0 ){
+            if(byte_leido<=0){
+                perror("error el la lectura del socket_arg2");
+                continue;
+            }
+        }
+        //ahora escribo el archivo con lo que tengo en el buffer_recepcion
+        if( ( write(imagen_fd, buffer_recepcion2, sizeof(byte_leido)) ) < 0){
+            perror("error al escribir el archivo de imagen");
+            exit(EXIT_FAILURE);
+        }
+        bytes_recibidos -=byte_leido;
+    }
+    gettimeofday(&fin, NULL);
+    close(imagen_fd);
+    printf("DEBUG: imagen escaneada recibida en %lf segundos", (float)(((fin.tv_sec - inicio.tv_sec)*1000000 +fin.tv_usec) - inicio.tv_usec)/1000000);
+    return 1; //esto es 1 dado que se comleto la recepcion
+
 
 }
