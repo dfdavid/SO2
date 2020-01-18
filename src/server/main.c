@@ -19,7 +19,7 @@
 #define RETRY 3
 #define FIRMWARE_FILE "./client_firmaware_1-1"
 #define IMAGE_FILE "./archivo_imagen"
-#define FILE_BUFFER_SIZE 2000
+#define FILE_BUFFER_SIZE 4000
 
 
 
