@@ -13,13 +13,13 @@
 
 #define CRED_LENGTH 20
 #define NUM_USERS 2
-#define BUFFER_SIZE 1000
+#define BUFFER_SIZE 1024
 #define PORT_NUMBER 5520
 #define UDP_PORT 5521
 #define RETRY 3
 #define FIRMWARE_FILE "./client_firmaware_1-1"
 #define IMAGE_FILE "./archivo_imagen.JPG"
-#define FILE_BUFFER_SIZE 4000
+#define FILE_BUFFER_SIZE 1500
 #define SIM_CONECT 3
 
 /**
@@ -43,9 +43,12 @@ int sendUpdate(int sockfd);
 int main() {
 
     struct Auth current_user;
-    int sockfd, newsockfd, pid, ret_recv;
+    int sockfd, newsockfd;
+    int pid;
+    //int ret_recv;
     socklen_t cli_length;
-    char send_buffer[BUFFER_SIZE], recv_buffer[BUFFER_SIZE];
+    char send_buffer[BUFFER_SIZE];
+    //recv_buffer[BUFFER_SIZE];
     memset(send_buffer, 0, sizeof(send_buffer));
     struct sockaddr_in st_serv, st_cli;
 
@@ -169,7 +172,7 @@ int main() {
                     printf("Opcion  ");
                     scanf("%d", &opt);  //scanf ( tipo_de_dato_a_leer, puntero al dato)
                     //fgets(opt, strlen(opt), stdin);
-                    if (opt == 1 | opt == 2 | opt == 3) {
+                    if ( (opt == 1) | (opt == 2) | (opt == 3) ) { //los parentesis estan sugeridos por CPPCHECK
                         opt_valid = true;
                     }
                 }
@@ -291,7 +294,8 @@ int getTelemetria(char *ipaddr){
     struct sockaddr_in dest_addr;
     socklen_t dest_size= sizeof(dest_addr);
     socklen_t *dest_addr_size_p=&dest_size;
-    char bufferudp[BUFFER_SIZE], bufferudp2[BUFFER_SIZE];
+    char bufferudp[BUFFER_SIZE];
+    //char bufferudp2[BUFFER_SIZE];
     //char *word = null;
 
 
