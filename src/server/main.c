@@ -18,11 +18,14 @@
 #define UDP_PORT 5521
 #define RETRY 3
 #define FIRMWARE_FILE "./client_firmaware_1-1"
-#define IMAGE_FILE "./archivo_imagen"
+#define IMAGE_FILE "./archivo_imagen.JPG"
 #define FILE_BUFFER_SIZE 4000
+#define SIM_CONECT 3
 
-
-
+/**
+ * @brief Estructura simple que contiene 2 campos: usr y psw, utilizados para almacenar las credenciales de los usuarios autorizados a loguearse en el servidor
+ *
+ */
 struct Auth{
     char usr[CRED_LENGTH];
     char psw[CRED_LENGTH];
@@ -33,6 +36,10 @@ int getTelemetria(char *ipaddr);
 int getScan(int sockfd);
 int sendUpdate(int sockfd);
 
+/**
+ * @brief Programa servidor, simula una estacion terrena a la cual pueden conectarse hasta SIM_CONECT clientes
+ * @return
+ */
 int main() {
 
     struct Auth current_user;
@@ -86,7 +93,7 @@ int main() {
 
     //invocar a listen(int sockfd, int maxConections) Esta funcion Convierte al Socket en un socket servidor
     //Upon successful completions, listen() returns 0. Otherwise, -1 is returned and errno is set to indicate the error.
-    int listening = listen(sockfd, 3);
+    int listening = listen(sockfd, SIM_CONECT);
     if (listening < 0) {
         perror("listening error");
     }
@@ -141,11 +148,12 @@ int main() {
         printf("%s\\> Conexion entrante... \n\n\n", current_user.usr);
         sleep(1);
 
-        pid = fork();
+        /*pid = fork();
         if (pid < 0) {
             perror("error al hacer fork");
         }
         else if (pid == 0) { //hijo
+        */
 
             bool terminar = false;
             while (terminar == false) {
@@ -236,20 +244,26 @@ int main() {
                 }
 
             }//end while
-        }//end if "proceso hijo"
+         //}//end if "proceso hijo"
 
-        else {//proceso padre
+        /*else {//proceso padre
             // https://linux.die.net/man/2/close
             close(newsockfd);
             //printf("El cliente cerro la conexion con el comando 'fin'  \n");
             continue;
-        }
+        }*/
     }//end while "big server loop"
     //return 0; //el programa del servidor no termina
 }// end main
 
 
 //
+/**
+ * @brief Indica si las credenciales de login insertadas son validas o no.
+ * @param user Nombre de usuario registrado (credencial de usuario)
+ * @param password Palabra clave asociada a un usuario registrado (credencial de usuario)
+ * @return Si el par de credenciales pasadas matchean con un suario registrado devuelve 1, en otro caso devuleve 0.
+ */
 int autenticar(char *user, char *password){
 
     struct Auth users[NUM_USERS]= {  {"admin", "admin"} , {"david","dandrea747"}  };
@@ -265,6 +279,11 @@ int autenticar(char *user, char *password){
 }//end autenticar
 
 //funcion 3
+/**
+ * @brief Abre un socket UDP. Solicita al cliente conectado informacion de telemetria, la la recibe mediante la conexion UDP y la imprime en la consola.
+ * @param ipaddr La direccion IP del programa cliente remoto almacenada en la estructura de la conexoin TCP, necesaria para iniciar la comunicacion por socket UDP.
+ * @return
+ */
 int getTelemetria(char *ipaddr){
     printf("ud invoco la funcion get telemetria \n");
 
@@ -339,6 +358,11 @@ int getTelemetria(char *ipaddr){
 }
 
 //funcion 1
+/**
+ * @brief Envia al cliente una version del firmaware ya compilado y listo para ejecutar.
+ * @param sockfd_arg El socket TCP de la comunicacion ya establecida entre cliente y servidor.
+ * @return
+ */
 int sendUpdate(int sockfd_arg){
     //replicate example function
     int firmware_fd;
@@ -381,6 +405,11 @@ int sendUpdate(int sockfd_arg){
 }
 
 //funcion2
+/**
+ * @brief Crea un archivo en el file system del SO del servidor con los datos enviados por el cliente.
+ * @param sockfd_arg2 El sockfd de la comunicacion establecida entre servidor y cliente.
+ * @return Devuelve 0 en caso de producirse algun error durante la creacion del archivo. Devuelve 1 en caso de que la recepcion del archivo sea correcta.
+ */
 int getScan(int sockfd_arg2){
     struct timeval inicio, fin;
     char *nombre_archivo=IMAGE_FILE;
@@ -392,7 +421,7 @@ int getScan(int sockfd_arg2){
         return 0;
     }
 
-    char buffer_recepcion2[BUFFER_SIZE];
+    char buffer_recepcion2[FILE_BUFFER_SIZE];
     long byte_leido=0;
     gettimeofday(&inicio, NULL);
     uint32_t bytes_recibidos;
@@ -413,7 +442,7 @@ int getScan(int sockfd_arg2){
             }
         }
         //ahora escribo el archivo con lo que tengo en el buffer_recepcion
-        if( ( write(imagen_fd, buffer_recepcion2, sizeof(byte_leido)) ) < 0){
+        if( ( write(imagen_fd, buffer_recepcion2, (size_t)byte_leido ) ) < 0){
             perror("error al escribir el archivo de imagen");
             exit(EXIT_FAILURE);
         }
