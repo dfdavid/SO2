@@ -17,7 +17,7 @@
 #define PORT_NUMBER 5520
 #define UDP_PORT 5521
 #define RETRY 3
-#define FIRMWARE_FILE "./client_firmaware_1-1"
+#define FIRMWARE_FILE "../../data/firmware_cliente_v1-1"
 #define IMAGE_FILE "./archivo_imagen.JPG"
 #define FILE_BUFFER_SIZE 1500
 #define SIM_CONECT 3
@@ -375,6 +375,7 @@ int sendUpdate(int sockfd_arg){
     char *filename=FIRMWARE_FILE;
 
     //intento abrir el archivo de firmaware en este caso:
+    get_dir();
     if ( ( firmware_fd = open(filename, O_RDONLY) ) < 0 ){
         perror("error al abrir el archivo de firmware");
         return -1; //
