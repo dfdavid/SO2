@@ -107,7 +107,7 @@ int main() {
     /*
     bool auth = false;
     int intentos=RETRY;
-    memset(&current_user, (char)NULL, sizeof(current_user) );
+    memset(&current_user, 0, sizeof(current_user) );
     while(auth == false) {
         printf("Autenticacion necesaria \n");
         printf("Usuario: ");
@@ -329,7 +329,7 @@ int getTelemetria(char *ipaddr){
     //int inet_aton(const char *cp, struct in_addr *inp);
     */
     inet_aton(ipaddr, &dest_addr.sin_addr);
-    printf("se cargo en la estructura la direccion:\n");
+    printf("se cargo en la estructura la direccion remota:\n");
     printf("%s\n", inet_ntoa(dest_addr.sin_addr));
 
     //se configuran las opciones del socket con setsocketopt(). Solo se hace bind del lado del srevidor. El servidor UDP es el satelite
@@ -345,14 +345,18 @@ int getTelemetria(char *ipaddr){
     //ssize_t sendto(int socket, const void *message, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len);
 
     while( strcmp(bufferudp, "udp_complete") != 0 ){
+        if(strcmp(bufferudp, "udp_complete") == 0){
+            break;
+        }
         memset(bufferudp, 0, sizeof(bufferudp));
         recvfrom(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, dest_addr_size_p );
         //ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len);
         char telemetria[BUFFER_SIZE]="";
 
         strcpy(telemetria, bufferudp);
+        printf("ID Sat | Uptime Sat | Firmware Sat | Free-RAM Sat\n");
         printf("Telemetria: %s\n", telemetria);
-
+        sleep(0.5);
     }
     shutdown(sockudp, SHUT_WR);  //originalmente torce le puso 2 y no la macro
     close(sockudp);
