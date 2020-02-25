@@ -1,11 +1,11 @@
 CC=gcc
 CFLAGS= -Werror -Wall -pedantic
 
-all: programa_servidor
+all: tp1_server
 
-programa_servidor: main.c
+tp1_server: main.c
 	cppcheck --enable=all --inconclusive --std=posix main.c
-	$(CC) $(CFLAGS) -o programa_servidor main.c 
+	$(CC) $(CFLAGS) -o tp1_server main.c 
 
 clean: 
-	rm programa_servidor 
+	rm tp1_server 
