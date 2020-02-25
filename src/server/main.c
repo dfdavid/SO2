@@ -185,7 +185,7 @@ int main() {
                     //printf("todavia no se implemento esta funcionalidad\n");
                     memset(send_buffer, 0, sizeof(send_buffer));
                     printf("llamando a la funcion de envio...  \n");
-                    strcpy(send_buffer, "1");
+                    strncpy(send_buffer, "1", 1);
                     if (send(newsockfd, send_buffer, sizeof(opt), 0) < 0) {
                         perror("error al enviar solicitud de firmaware update");
                     }
