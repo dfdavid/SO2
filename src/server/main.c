@@ -45,7 +45,7 @@ int main() {
 
     struct Auth current_user;
     int sockfd, newsockfd;
-    int pid;
+    //int pid;
     //int ret_recv;
     socklen_t cli_length;
     char send_buffer[BUFFER_SIZE];
@@ -173,7 +173,7 @@ int main() {
                 printf("Opcion  ");
                 scanf("%d", &opt);  //scanf ( tipo_de_dato_a_leer, puntero al dato)
                 //fgets(opt, strlen(opt), stdin);
-                if ( (opt == 1) | (opt == 2) | (opt == 3) ) { //los parentesis estan sugeridos por CPPCHECK
+                if ( (opt == 1) || (opt == 2) || (opt == 3) ) { //los parentesis estan sugeridos por CPPCHECK
                     opt_valid = true;
                 }
             }
@@ -198,7 +198,7 @@ int main() {
                 case 2:
                     //printf("todavia no se implemento esta funcionalidad\n");
                     memset(send_buffer, 0, sizeof(send_buffer));
-                    strcpy(send_buffer, "2");
+                    strncpy(send_buffer, "2",1);
                     printf("sending scannig request... \n");
                     if (send(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0) {
                         perror("error al enviar solicitud de Start scaning");
@@ -210,7 +210,7 @@ int main() {
                 case 3:
                     //get telemetria
                     printf("getting telemetry \n");
-                    strcpy(send_buffer, "3");
+                    strncpy(send_buffer, "3",1);
                     if (send(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0) {
                         perror("error al enviar solicitud de get telemetry");
                     }
@@ -286,7 +286,7 @@ int autenticar(char *user, char *password){
 /**
  * @brief Abre un socket UDP. Solicita al cliente conectado informacion de telemetria, la la recibe mediante la conexion UDP y la imprime en la consola.
  * @param ipaddr La direccion IP del programa cliente remoto almacenada en la estructura de la conexoin TCP, necesaria para iniciar la comunicacion por socket UDP.
- * @return
+ * @return retorna 1 si se logro recibir datos desde el cliente y el mensaje de fin de UDP
  */
 int getTelemetria(char *ipaddr){
     printf("ud invoco la funcion get telemetria \n");
@@ -349,7 +349,7 @@ int getTelemetria(char *ipaddr){
         recvfrom(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, dest_addr_size_p );
         //ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len);
         char telemetria[BUFFER_SIZE]="";
-        char *token=&telemetria[0];
+        //char *token=&telemetria[0];
         /*while(token!=NULL){
             token = strtok(bufferudp, "|");
             strcat(telemetria, token);
@@ -360,6 +360,7 @@ int getTelemetria(char *ipaddr){
     }
     shutdown(sockudp, SHUT_WR);  //originalmente torce le puso 2 y no la macro
     close(sockudp);
+    return 1;
 }
 
 //funcion 1
