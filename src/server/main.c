@@ -22,6 +22,7 @@
 #define FILE_BUFFER_SIZE 1500
 #define SIM_CONECT 3
 
+
 /**
  * @brief Estructura simple que contiene 2 campos: usr y psw, utilizados para almacenar las credenciales de los usuarios autorizados a loguearse en el servidor
  *
@@ -97,6 +98,7 @@ int main() {
 
     //invocar a listen(int sockfd, int maxConections) Esta funcion Convierte al Socket en un socket servidor
     //Upon successful completions, listen() returns 0. Otherwise, -1 is returned and errno is set to indicate the error.
+
     int listening = listen(sockfd, SIM_CONECT);
     if (listening < 0) {
         perror("listening error");
@@ -243,6 +245,7 @@ int main() {
 
 
 //
+
 /**
  * @brief Indica si las credenciales de login insertadas son validas o no.
  * @param user Nombre de usuario registrado (credencial de usuario)
@@ -298,11 +301,19 @@ int getTelemetria(char *ipaddr){
     //Carga de dirección IPv4 del socket
     /*
      composicion de la estructura sockadd_in:
+<<<<<<< HEAD
+=======
+
+>>>>>>> b85e7fad67b6061cecc0908a25ece3457b56234b
      struct sockaddr_in {
             short int sin_family;
             unsigned short int sin_port;
             struct in_addr sin_addr;
     };
+<<<<<<< HEAD
+=======
+
+>>>>>>> b85e7fad67b6061cecc0908a25ece3457b56234b
     //para mas detalles sobre inet_aton consultar:
     //https://linux.die.net/man/3/inet_aton
     //int inet_aton(const char *cp, struct in_addr *inp);
@@ -430,6 +441,7 @@ int getScan(int sockfd_arg2){
             }
         }
         //ahora escribo el archivo con lo que tengo en el buffer_recepcion
+
         if( ( write(imagen_fd, buffer_recepcion2, (size_t)byte_leido ) ) < 0){
             perror("error al escribir el archivo de imagen");
             exit(EXIT_FAILURE);
