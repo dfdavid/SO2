@@ -45,7 +45,7 @@ int main() {
 
     struct Auth current_user;
     int sockfd, newsockfd;
-    //int pid;
+    int pid;
     //int ret_recv;
     socklen_t cli_length;
     char send_buffer[BUFFER_SIZE];
@@ -104,7 +104,7 @@ int main() {
 
     //prompt 1
     //autenticacion
-    /*
+
     bool auth = false;
     int intentos=RETRY;
     memset(&current_user, 0, sizeof(current_user) );
@@ -152,12 +152,12 @@ int main() {
         printf("%s\\> Conexion entrante... \n\n\n", current_user.usr);
         sleep(1);
 
-        /*pid = fork();
+        pid = fork();
         if (pid < 0) {
             perror("error al hacer fork");
         }
         else if (pid == 0) { //hijo
-        */
+
 
         bool terminar = false;
         while (terminar == false) {
@@ -177,7 +177,7 @@ int main() {
                     opt_valid = true;
                 }
             }
-            printf("Ha elegido %d \n", opt);
+            //printf("Ha elegido %d \n", opt);
 
             //switch por opciones
             switch (opt) {
@@ -191,6 +191,7 @@ int main() {
                     }
                     memset(send_buffer, 0, sizeof(send_buffer));
                     sendUpdate(newsockfd);
+                    //close(newsockfd);
                     kill(getpid(), SIGINT);
 
                     break;
@@ -209,7 +210,7 @@ int main() {
 
                 case 3:
                     //get telemetria
-                    printf("getting telemetry \n");
+                    printf("Solicitando telemetria \n");
                     strncpy(send_buffer, "3", 1);
                     if (send(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0) {
                         perror("error al enviar solicitud de get telemetry");
@@ -248,16 +249,16 @@ int main() {
             }
 
         }//end while
-        //}//end if "proceso hijo"
+        }//end if "proceso hijo"
 
-        /*else {//proceso padre
+        else {//proceso padre
             // https://linux.die.net/man/2/close
             close(newsockfd);
             //printf("El cliente cerro la conexion con el comando 'fin'  \n");
             continue;
-        }*/
+        }
     }//end while "big server loop"
-    //return 0; //el programa del servidor no termina
+    return 0; //el programa del servidor no termina
 }// end main
 
 
@@ -289,7 +290,7 @@ int autenticar(char *user, char *password){
  * @return devuelve 1 si se ha si se ha recibido el string 'udp_complete' desde el cliente
  */
 int getTelemetria(char *ipaddr){
-    printf("ud invoco la funcion get telemetria \n");
+    printf("DEBUG: ud invoco la funcion get telemetria \n");
 
     int sockudp;
     struct sockaddr_in dest_addr;
@@ -329,8 +330,9 @@ int getTelemetria(char *ipaddr){
     //int inet_aton(const char *cp, struct in_addr *inp);
     */
     inet_aton(ipaddr, &dest_addr.sin_addr);
-    printf("se cargo en la estructura la direccion remota:\n");
-    printf("%s\n", inet_ntoa(dest_addr.sin_addr));
+    printf("Direccion IP del host remoto: %s\n\n", inet_ntoa(dest_addr.sin_addr));
+    printf("Formato de la telemetria: ID Sat | Uptime Sat | Firmware Sat | Free-RAM Sat\n");
+    sleep(0.5);
 
     //se configuran las opciones del socket con setsocketopt(). Solo se hace bind del lado del srevidor. El servidor UDP es el satelite
     int socksize;
@@ -344,19 +346,20 @@ int getTelemetria(char *ipaddr){
     sendto(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
     //ssize_t sendto(int socket, const void *message, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len);
 
-    while( strcmp(bufferudp, "udp_complete") != 0 ){
+    while( 1 ){
         if(strcmp(bufferudp, "udp_complete") == 0){
             break;
         }
-        memset(bufferudp, 0, sizeof(bufferudp));
-        recvfrom(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, dest_addr_size_p );
-        //ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len);
-        char telemetria[BUFFER_SIZE]="";
+        else if (strcmp(bufferudp, "udp_complete") != 0){
+            memset(bufferudp, 0, sizeof(bufferudp));
+            recvfrom(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, dest_addr_size_p );
+            //ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len);
+            char telemetria[BUFFER_SIZE]="";
 
-        strcpy(telemetria, bufferudp);
-        printf("ID Sat | Uptime Sat | Firmware Sat | Free-RAM Sat\n");
-        printf("Telemetria: %s\n", telemetria);
-        sleep(0.5);
+            strcpy(telemetria, bufferudp);
+            printf("Telemetria: %s\n", telemetria);
+            sleep(0.5);
+        }
     }
     shutdown(sockudp, SHUT_WR);  //originalmente torce le puso 2 y no la macro
     close(sockudp);
