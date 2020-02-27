@@ -13,14 +13,14 @@
 
 #define CRED_LENGTH 20
 #define NUM_USERS 2
-#define BUFFER_SIZE 1000
+#define BUFFER_SIZE 1024
 #define PORT_NUMBER 5520
 #define UDP_PORT 5521
 #define RETRY 3
-#define FIRMWARE_FILE "./client_firmaware_1-1"
-#define IMAGE_FILE "./archivo_imagen"
-#define FILE_BUFFER_SIZE 4000
-
+#define FIRMWARE_FILE "../../data/firmware_cliente_v1-1"
+#define IMAGE_FILE "./archivo_imagen.JPG"
+#define FILE_BUFFER_SIZE 1500
+#define SIM_CONECT 3
 
 
 struct Auth{
@@ -32,13 +32,17 @@ int autenticar(char *user, char *password);
 int getTelemetria(char *ipaddr);
 int getScan(int sockfd);
 int sendUpdate(int sockfd);
+void get_dir();
 
 int main() {
 
     struct Auth current_user;
-    int sockfd, newsockfd, pid, ret_recv;
+    int sockfd, newsockfd;
+    int pid;
+    //int ret_recv;
     socklen_t cli_length;
-    char send_buffer[BUFFER_SIZE], recv_buffer[BUFFER_SIZE];
+    char send_buffer[BUFFER_SIZE];
+    //recv_buffer[BUFFER_SIZE];
     memset(send_buffer, 0, sizeof(send_buffer));
     struct sockaddr_in st_serv, st_cli;
 
@@ -93,10 +97,10 @@ int main() {
 
     //prompt 1
     //autenticacion
-    /*
+
     bool auth = false;
     int intentos=RETRY;
-    memset(&current_user, (char)NULL, sizeof(current_user) );
+    memset(&current_user, 0, sizeof(current_user) );
     while(auth == false) {
         printf("Autenticacion necesaria \n");
         printf("Usuario: ");
@@ -147,95 +151,100 @@ int main() {
         }
         else if (pid == 0) { //hijo
 
-            bool terminar = false;
-            while (terminar == false) {
 
-                bool opt_valid = false;
-                int opt = 0;
-                while (opt_valid != true) { //menu de operaciones
-                    printf("\n");
-                    printf("    Seleccione una opcion: \n");
-                    printf("1 - Update Satellite Firmware \n");
-                    printf("2 - Start Scanning \n");
-                    printf("3 - Get Telemetry \n\n");
-                    printf("Opcion  ");
-                    scanf("%d", &opt);  //scanf ( tipo_de_dato_a_leer, puntero al dato)
-                    //fgets(opt, strlen(opt), stdin);
-                    if (opt == 1 | opt == 2 | opt == 3) {
-                        opt_valid = true;
+        bool terminar = false;
+        while (terminar == false) {
+
+            bool opt_valid = false;
+            int opt = 0;
+            while (opt_valid != true) { //menu de operaciones
+                printf("\n");
+                printf("    Seleccione una opcion: \n");
+                printf("1 - Update Satellite Firmware \n");
+                printf("2 - Start Scanning \n");
+                printf("3 - Get Telemetry \n\n");
+                printf("Opcion  ");
+                scanf("%d", &opt);  //scanf ( tipo_de_dato_a_leer, puntero al dato)
+                //fgets(opt, strlen(opt), stdin);
+                if ( (opt == 1) || (opt == 2) || (opt == 3) ) { //los parentesis estan sugeridos por CPPCHECK
+                    opt_valid = true;
+
+                }
+            }
+            //printf("Ha elegido %d \n", opt);
+
+            //switch por opciones
+            switch (opt) {
+                case 1:
+                    //printf("todavia no se implemento esta funcionalidad\n");
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    printf("llamando a la funcion de envio...  \n");
+                    strncpy(send_buffer, "1", 1);
+                    if (send(newsockfd, send_buffer, sizeof(opt), 0) < 0) {
+                        perror("error al enviar solicitud de firmaware update");
                     }
-                }
-                printf("Ha elegido %d \n", opt);
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    sendUpdate(newsockfd);
+                    //close(newsockfd);
+                    kill(getpid(), SIGINT);
 
-                //switch por opciones
-                switch (opt) {
-                    case 1:
-                        //printf("todavia no se implemento esta funcionalidad\n");
-                        memset(send_buffer, 0, sizeof(send_buffer));
-                        printf("sending satellite firmware version...  \n");
-                        strcpy(send_buffer, "1");
-                        if (send(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0) {
-                            perror("error al enviar solicitud de firmaware update");
-                        }
-                        memset(send_buffer, 0, sizeof(send_buffer));
-                        sendUpdate(newsockfd);
-                        kill(getpid(), SIGINT);
+                    break;
 
-                        break;
+                case 2:
+                    //printf("todavia no se implemento esta funcionalidad\n");
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    strcpy(send_buffer, "2");
+                    printf("sending scannig request... \n");
+                    if (send(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0) {
+                        perror("error al enviar solicitud de Start scaning");
+                    }
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    getScan(newsockfd);
+                    break;
 
-                    case 2:
-                        //printf("todavia no se implemento esta funcionalidad\n");
-                        memset(send_buffer, 0, sizeof(send_buffer));
-                        strcpy(send_buffer, "2");
-                        printf("sending scannig request... \n");
-                        if (send(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0) {
-                            perror("error al enviar solicitud de Start scaning");
-                        }
-                        memset(send_buffer, 0, sizeof(send_buffer));
-                        getScan(newsockfd);
-                        break;
+                case 3:
+                    //get telemetria
+                    printf("Solicitando telemetria \n");
+                    strncpy(send_buffer, "3", 1);
+                    if (send(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0) {
+                        perror("error al enviar solicitud de get telemetry");
+                    }
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    getTelemetria(inet_ntoa(st_cli.sin_addr));
+                    //printf("%s \n", inet_ntoa( st_cli.sin_addr )); // se le pasa ip en formato ascii la ip del cliente
+                    break;
 
-                    case 3:
-                        //get telemetria
-                        printf("getting telemetry \n");
-                        strcpy(send_buffer, "3");
-                        if (send(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0) {
-                            perror("error al enviar solicitud de get telemetry");
-                        }
-                        memset(send_buffer, 0, sizeof(send_buffer));
-                        getTelemetria(inet_ntoa(st_cli.sin_addr));
-                        //printf("%s \n", inet_ntoa( st_cli.sin_addr )); // se le pasa ip en formato ascii la ip del cliente
-                        break;
+                default:
+                    break;
+            }
 
-                    default:
-                        break;
-                }
+            //codigo viejo. Anda pero hay que usarlo para algo o sacarlo a la mier
+            /*
+                if( recv(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0){
+                    perror("error en recv()" );
+                    continue; //ojo aca, que hace en realidad el contnue?
+                } //end if
 
-                //codigo viejo. Anda pero hay que usarlo para algo o sacarlo a la mier
-                /*
-                    if( recv(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0){
-                        perror("error en recv()" );
-                        continue; //ojo aca, que hace en realidad el contnue?
-                    } //end if
+                else{
 
-                    else{
+                    printf( "PROCESO %d \n", getpid() );
+                    printf( "Recibí: %s \n", send_buffer );
+                    //muestra el tamano del send_buffer en bytes. El send_buffer del servidor y cliente deberian ser iguales en tamano para evitar errores, por ejemplo, si el buff_cli es 1000 y el buff_srv es 100, el server se bloqueara para esperar una recepcion despues de leer el send_buffer 10 veces. Me paso (David)
+                    printf("bytes recibidos: %d  \n", ret_recv);
 
-                        printf( "PROCESO %d \n", getpid() );
-                        printf( "Recibí: %s \n", send_buffer );
-                        //muestra el tamano del send_buffer en bytes. El send_buffer del servidor y cliente deberian ser iguales en tamano para evitar errores, por ejemplo, si el buff_cli es 1000 y el buff_srv es 100, el server se bloqueara para esperar una recepcion despues de leer el send_buffer 10 veces. Me paso (David)
-                        printf("bytes recibidos: %d  \n", ret_recv);
+                    if (send( newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
+                        perror("error al enviar desde el server");
+                        continue;
+                    }
+                }//end else*/
 
-                        if (send( newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
-                            perror("error al enviar desde el server");
-                            continue;
-                        }
-                    }//end else*/
 
-                if (strcmp(send_buffer, "fin\n") == 0) {
-                    terminar = true;
-                }
+            if (strcmp(send_buffer, "fin\n") == 0) {
+                terminar = true;
+            }
 
-            }//end while
+        }//end while
+
         }//end if "proceso hijo"
 
         else {//proceso padre
@@ -245,7 +254,7 @@ int main() {
             continue;
         }
     }//end while "big server loop"
-    //return 0; //el programa del servidor no termina
+    return 0; //el programa del servidor no termina
 }// end main
 
 
@@ -265,14 +274,20 @@ int autenticar(char *user, char *password){
 }//end autenticar
 
 //funcion 3
+/**
+ * @brief Abre un socket UDP. Solicita al cliente conectado informacion de telemetria, la la recibe mediante la conexion UDP y la imprime en la consola.
+ * @param ipaddr La direccion IP del programa cliente remoto almacenada en la estructura de la conexoin TCP, necesaria para iniciar la comunicacion por socket UDP.
+ * @return devuelve 1 si se ha si se ha recibido el string 'udp_complete' desde el cliente
+ */
 int getTelemetria(char *ipaddr){
-    printf("ud invoco la funcion get telemetria \n");
+    printf("DEBUG: ud invoco la funcion get telemetria \n");
 
     int sockudp;
     struct sockaddr_in dest_addr;
     socklen_t dest_size= sizeof(dest_addr);
     socklen_t *dest_addr_size_p=&dest_size;
-    char bufferudp[BUFFER_SIZE], bufferudp2[BUFFER_SIZE];
+    char bufferudp[BUFFER_SIZE];
+    //char bufferudp2[BUFFER_SIZE];
     //char *word = null;
 
 
@@ -305,8 +320,9 @@ int getTelemetria(char *ipaddr){
     //int inet_aton(const char *cp, struct in_addr *inp);
     */
     inet_aton(ipaddr, &dest_addr.sin_addr);
-    printf("se cargo en la estructura la direccion:\n");
-    printf("%s\n", inet_ntoa(dest_addr.sin_addr));
+    printf("Direccion IP del host remoto: %s\n\n", inet_ntoa(dest_addr.sin_addr));
+    printf("Formato de la telemetria: ID Sat | Uptime Sat | Firmware Sat | Free-RAM Sat\n");
+    sleep(0.5);
 
     //se configuran las opciones del socket con setsocketopt(). Solo se hace bind del lado del srevidor. El servidor UDP es el satelite
     int socksize;
@@ -320,22 +336,24 @@ int getTelemetria(char *ipaddr){
     sendto(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
     //ssize_t sendto(int socket, const void *message, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len);
 
-    while( strcmp(bufferudp, "udp_complete") != 0 ){
-        memset(bufferudp, 0, sizeof(bufferudp));
-        recvfrom(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, dest_addr_size_p );
-        //ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len);
-        char telemetria[BUFFER_SIZE]="";
-        char *token=&telemetria[0];
-        /*while(token!=NULL){
-            token = strtok(bufferudp, "|");
-            strcat(telemetria, token);
-        }*/
-        strcpy(telemetria, bufferudp);
-        printf("Telemetria: %s\n", telemetria);
+    while( 1 ){
+        if(strcmp(bufferudp, "udp_complete") == 0){
+            break;
+        }
+        else if (strcmp(bufferudp, "udp_complete") != 0){
+            memset(bufferudp, 0, sizeof(bufferudp));
+            recvfrom(sockudp, bufferudp, sizeof(bufferudp), 0, (struct sockaddr *)&dest_addr, dest_addr_size_p );
+            //ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len);
+            char telemetria[BUFFER_SIZE]="";
 
+            strcpy(telemetria, bufferudp);
+            printf("Telemetria: %s\n", telemetria);
+            sleep(0.5);
+        }
     }
     shutdown(sockudp, SHUT_WR);  //originalmente torce le puso 2 y no la macro
     close(sockudp);
+    return 1;
 }
 
 //funcion 1
@@ -346,6 +364,7 @@ int sendUpdate(int sockfd_arg){
     char *filename=FIRMWARE_FILE;
 
     //intento abrir el archivo de firmaware en este caso:
+    get_dir();
     if ( ( firmware_fd = open(filename, O_RDONLY) ) < 0 ){
         perror("error al abrir el archivo de firmware");
         return -1; //
@@ -425,4 +444,16 @@ int getScan(int sockfd_arg2){
     return 1; //esto es 1 dado que se comleto la recepcion
 
 
+}
+
+/**
+ *@brief Funcion simple que imprime en consola el path absoluto en el cual se encuentra el ejecutable del programa que la invoca.
+ */
+void get_dir() {
+    char cwd[BUFFER_SIZE];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("Current working dir: %s\n", cwd);
+    } else {
+        perror("getcwd() error");
+    }
 }
