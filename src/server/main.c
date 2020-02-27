@@ -224,23 +224,6 @@ int main() {
                         break;
                 }
 
-                //codigo viejo. Anda pero hay que usarlo para algo o sacarlo a la mier
-                /*
-                    if( recv(newsockfd, send_buffer, sizeof(send_buffer), 0) < 0){
-                        perror("error en recv()" );
-                        continue; //ojo aca, que hace en realidad el contnue?
-                    } //end if
-                    else{
-                        printf( "PROCESO %d \n", getpid() );
-                        printf( "Recibí: %s \n", send_buffer );
-                        //muestra el tamano del send_buffer en bytes. El send_buffer del servidor y cliente deberian ser iguales en tamano para evitar errores, por ejemplo, si el buff_cli es 1000 y el buff_srv es 100, el server se bloqueara para esperar una recepcion despues de leer el send_buffer 10 veces. Me paso (David)
-                        printf("bytes recibidos: %d  \n", ret_recv);
-                        if (send( newsockfd, send_buffer, sizeof(send_buffer), 0 ) < 0 ){
-                            perror("error al enviar desde el server");
-                            continue;
-                        }
-                    }//end else*/
-
                 if (strcmp(send_buffer, "fin\n") == 0) {
                     terminar = true;
                 }
